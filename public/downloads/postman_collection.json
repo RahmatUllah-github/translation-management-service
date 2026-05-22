@@ -1,0 +1,219 @@
+{
+  "info": {
+    "_postman_id": "b1f5e9a0-7c3d-4e8a-9f21-tms0000000001",
+    "name": "Translation Management Service API",
+    "description": "REST API for storing, searching and exporting localized translations.\n\n## Getting started\n1. Set the `base_url` collection variable if your server is not on http://localhost:8005.\n2. Run **Authentication > Login** — the returned token is saved automatically to the `token` variable.\n3. Every other request inherits bearer auth from the collection, so they just work.\n4. Run **Translations > Create Translation** — the new id is saved to `translation_id`, so Show/Update/Delete work without editing anything.\n\nDefault credentials: admin@example.com / password\n\n## Response shape\nEvery JSON response uses one envelope:\n\n    { \"status\": \"success|failed\", \"code\": <http>, \"message\": \"...\", \"data\": <payload|null> }\n\n- List endpoints place the paginated payload at `data.data`, with `data.links` and `data.meta`.\n- Validation errors (422) place the field errors at `data`.\n- The only exception is **Export**, which returns a raw flat `{\"key\":\"value\"}` map (no envelope) for direct frontend i18n consumption.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      { "key": "token", "value": "{{token}}", "type": "string" }
+    ]
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:8005", "type": "string" },
+    { "key": "token", "value": "", "type": "string" },
+    { "key": "translation_id", "value": "1", "type": "string" }
+  ],
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "",
+                  "pm.test('status code is 200', () => pm.response.code === 200);",
+                  "pm.test('envelope status is success', () => res.status === 'success');",
+                  "pm.test('a token is returned', () => Boolean(res.data && res.data.token));",
+                  "",
+                  "if (res.data && res.data.token) {",
+                  "    pm.collectionVariables.set('token', res.data.token);",
+                  "    console.log('Token saved to the `token` collection variable.');",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"email\": \"admin@example.com\",\n    \"password\": \"password\",\n    \"device_name\": \"postman\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "login"]
+            },
+            "description": "Authenticate and receive a Sanctum bearer token.\n\nResponse: `{status, code, message, data: {user, token, token_type}}`. The test script stores `data.token` in the `token` variable automatically. Invalid credentials return `422` with errors under `data`."
+          }
+        },
+        {
+          "name": "Get Current User",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/me",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "me"]
+            },
+            "description": "Return the currently authenticated user.\n\nResponse: `{status, code, message, data: {id, name, email}}`. Returns `401` if the token is missing or revoked."
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/logout",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "logout"]
+            },
+            "description": "Revoke the access token used for this request.\n\nResponse: `{status, code, message, data: null}` with HTTP `200`."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Translations",
+      "item": [
+        {
+          "name": "List & Search",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{base_url}}/api/v1/translations?per_page=50",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "translations"],
+              "query": [
+                { "key": "per_page", "value": "50" },
+                { "key": "locale", "value": "en", "disabled": true },
+                { "key": "key", "value": "homepage", "disabled": true },
+                { "key": "content", "value": "welcome", "disabled": true },
+                { "key": "tags[]", "value": "web", "disabled": true },
+                { "key": "tags[]", "value": "mobile", "disabled": true },
+                { "key": "cursor", "value": "", "disabled": true }
+              ]
+            },
+            "description": "Cursor-paginated list. Enable any of the disabled query params to filter by locale, key prefix, content (full-text), or tags. Filters combine with AND.\n\nResponse: `{status, code, message, data: {data: [...translations], links, meta}}` — the items are at `data.data`, the pagination cursor at `data.meta.next_cursor`."
+          }
+        },
+        {
+          "name": "Create Translation",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "",
+                  "pm.test('status code is 201', () => pm.response.code === 201);",
+                  "pm.test('envelope status is success', () => res.status === 'success');",
+                  "",
+                  "if (res.data && res.data.id) {",
+                  "    pm.collectionVariables.set('translation_id', res.data.id);",
+                  "    console.log('translation_id set to ' + res.data.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"locale\": \"en\",\n    \"key\": \"homepage.title\",\n    \"content\": \"Welcome\",\n    \"tags\": [\"web\", \"mobile\"]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/translations",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "translations"]
+            },
+            "description": "Create a translation. `tags` is optional; unknown tags are created automatically.\n\nResponse: `{status, code: 201, message, data: {id, key, content, locale, tags, ...}}`. The test script saves `data.id` to the `translation_id` variable. Validation errors return `422` with field errors under `data`."
+          }
+        },
+        {
+          "name": "Show Translation",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{base_url}}/api/v1/translations/{{translation_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "translations", "{{translation_id}}"]
+            },
+            "description": "Fetch a single translation by id.\n\nResponse: `{status, code, message, data: {id, key, content, locale, tags, ...}}`. Returns `404` (`{status: failed, code: 404, ...}`) if the id does not exist."
+          }
+        },
+        {
+          "name": "Update Translation",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"content\": \"Welcome back\",\n    \"tags\": [\"web\"]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/translations/{{translation_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "translations", "{{translation_id}}"]
+            },
+            "description": "Partial update — send only the fields you want to change (locale, key, content, tags).\n\nResponse: `{status, code, message, data: {...updated translation}}`."
+          }
+        },
+        {
+          "name": "Delete Translation",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{base_url}}/api/v1/translations/{{translation_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "translations", "{{translation_id}}"]
+            },
+            "description": "Delete a translation.\n\nResponse: `{status: success, code: 200, message: \"Translation deleted successfully.\", data: null}`."
+          }
+        },
+        {
+          "name": "Export (flat JSON for frontends)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{base_url}}/api/v1/translations/export?locale=en",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "translations", "export"],
+              "query": [{ "key": "locale", "value": "en" }]
+            },
+            "description": "Export a locale's translations.\n\nUnlike every other endpoint, this returns a RAW flat map — `{\"homepage.title\": \"Welcome\", \"auth.login\": \"Log in\"}` — with no envelope, so it can be consumed directly by Vue.js / vue-i18n. Send the response `ETag` back as an `If-None-Match` header to receive `304 Not Modified` when nothing changed."
+          }
+        }
+      ]
+    }
+  ]
+}

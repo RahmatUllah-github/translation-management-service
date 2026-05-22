@@ -82,10 +82,13 @@ use OpenApi\Attributes as OA;
 #[OA\Schema(
     schema: 'ValidationError',
     title: 'Validation error (HTTP 422)',
+    description: 'Standard envelope; field-keyed messages are placed under `data`.',
     properties: [
+        new OA\Property(property: 'status', type: 'string', example: 'failed'),
+        new OA\Property(property: 'code', type: 'integer', example: 422),
         new OA\Property(property: 'message', type: 'string', example: 'The key field is required.'),
         new OA\Property(
-            property: 'errors',
+            property: 'data',
             type: 'object',
             example: ['key' => ['The key field is required.']],
         ),
@@ -94,9 +97,25 @@ use OpenApi\Attributes as OA;
 )]
 #[OA\Schema(
     schema: 'Error',
-    title: 'Generic error',
+    title: 'Error response',
+    description: 'Standard envelope for any failed request (401, 403, 404, 429, 500).',
     properties: [
+        new OA\Property(property: 'status', type: 'string', example: 'failed'),
+        new OA\Property(property: 'code', type: 'integer', example: 401),
         new OA\Property(property: 'message', type: 'string', example: 'Unauthenticated.'),
+        new OA\Property(property: 'data', type: 'object', nullable: true, example: null),
+    ],
+    type: 'object',
+)]
+#[OA\Schema(
+    schema: 'SuccessMessage',
+    title: 'Success response (no payload)',
+    description: 'Standard envelope for a successful action that returns no data.',
+    properties: [
+        new OA\Property(property: 'status', type: 'string', example: 'success'),
+        new OA\Property(property: 'code', type: 'integer', example: 200),
+        new OA\Property(property: 'message', type: 'string', example: 'Operation completed successfully.'),
+        new OA\Property(property: 'data', type: 'object', nullable: true, example: null),
     ],
     type: 'object',
 )]

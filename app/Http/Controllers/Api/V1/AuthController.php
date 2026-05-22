@@ -62,7 +62,11 @@ final class AuthController extends Controller
                 description: 'Invalid credentials',
                 content: new OA\JsonContent(ref: '#/components/schemas/ValidationError'),
             ),
-            new OA\Response(response: 429, description: 'Too many login attempts'),
+            new OA\Response(
+                response: 429,
+                description: 'Too many login attempts',
+                content: new OA\JsonContent(ref: '#/components/schemas/Error'),
+            ),
         ],
     )]
     public function login(LoginRequest $request): JsonResponse
@@ -86,7 +90,11 @@ final class AuthController extends Controller
         security: [['bearerAuth' => []]],
         tags: ['Authentication'],
         responses: [
-            new OA\Response(response: 200, description: 'Logged out'),
+            new OA\Response(
+                response: 200,
+                description: 'Logged out',
+                content: new OA\JsonContent(ref: '#/components/schemas/SuccessMessage'),
+            ),
             new OA\Response(
                 response: 401,
                 description: 'Unauthenticated',
@@ -114,7 +122,16 @@ final class AuthController extends Controller
         security: [['bearerAuth' => []]],
         tags: ['Authentication'],
         responses: [
-            new OA\Response(response: 200, description: 'Current user'),
+            new OA\Response(
+                response: 200,
+                description: 'Current user',
+                content: new OA\JsonContent(properties: [
+                    new OA\Property(property: 'status', type: 'string', example: 'success'),
+                    new OA\Property(property: 'code', type: 'integer', example: 200),
+                    new OA\Property(property: 'message', type: 'string'),
+                    new OA\Property(property: 'data', ref: '#/components/schemas/User'),
+                ]),
+            ),
             new OA\Response(
                 response: 401,
                 description: 'Unauthenticated',
