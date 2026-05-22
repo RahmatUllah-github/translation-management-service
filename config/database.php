@@ -58,7 +58,11 @@ return [
             'prefix' => '',
             'prefix_indexes' => true,
             'strict' => true,
-            'engine' => null,
+            // Force InnoDB: required for foreign keys and the FULLTEXT/transaction
+            // features this service relies on. Some MySQL installs (e.g. WAMP)
+            // still default to MyISAM, whose 1000-byte index limit also breaks
+            // utf8mb4 unique keys.
+            'engine' => env('DB_ENGINE', 'InnoDB'),
             'options' => extension_loaded('pdo_mysql') ? array_filter([
                 (PHP_VERSION_ID >= 80500 ? Mysql::ATTR_SSL_CA : PDO::MYSQL_ATTR_SSL_CA) => env('MYSQL_ATTR_SSL_CA'),
             ]) : [],
