@@ -1,25 +1,25 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Database\Seeders;
 
-use App\Models\User;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
-class DatabaseSeeder extends Seeder
+final class DatabaseSeeder extends Seeder
 {
-    use WithoutModelEvents;
-
     /**
-     * Seed the application's database.
+     * Seed a fully usable baseline: an API user, locales, tags and a small
+     * demo set of translations. Use `php artisan translations:seed` to load
+     * the 100k+ dataset for performance testing.
      */
     public function run(): void
     {
-        // User::factory(10)->create();
-
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
+        $this->call([
+            UserSeeder::class,
+            LocaleSeeder::class,
+            TagSeeder::class,
+            TranslationSeeder::class,
         ]);
     }
 }
