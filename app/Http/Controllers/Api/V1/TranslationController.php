@@ -33,13 +33,13 @@ final class TranslationController extends Controller
 
     /**
      * List & search translations (filters: locale, key, content, tags),
-     * cursor-paginated for stable O(page) performance at any depth.
+     * paginated by page number with current/next/prev page numbers in meta.
      */
     #[OA\Get(
         path: '/api/v1/translations',
         operationId: 'translationsIndex',
         summary: 'List & search translations',
-        description: 'Filterable, cursor-paginated list. All filters are optional and combine with AND.',
+        description: 'Filterable, page-number paginated list. All filters are optional and combine with AND.',
         security: [['bearerAuth' => []]],
         tags: ['Translations'],
         parameters: [
@@ -48,7 +48,7 @@ final class TranslationController extends Controller
             new OA\Parameter(name: 'content', in: 'query', description: 'Full-text search over content', schema: new OA\Schema(type: 'string')),
             new OA\Parameter(name: 'tags[]', in: 'query', description: 'Tag name(s); ANY-match', schema: new OA\Schema(type: 'array', items: new OA\Items(type: 'string'))),
             new OA\Parameter(name: 'per_page', in: 'query', description: 'Page size (1-200, default 50)', schema: new OA\Schema(type: 'integer')),
-            new OA\Parameter(name: 'cursor', in: 'query', description: 'Pagination cursor', schema: new OA\Schema(type: 'string')),
+            new OA\Parameter(name: 'page', in: 'query', description: 'Page number (1-based, default 1)', schema: new OA\Schema(type: 'integer')),
         ],
         responses: [
             new OA\Response(
@@ -60,8 +60,14 @@ final class TranslationController extends Controller
                     new OA\Property(property: 'message', type: 'string'),
                     new OA\Property(property: 'data', type: 'object', properties: [
                         new OA\Property(property: 'data', type: 'array', items: new OA\Items(ref: '#/components/schemas/Translation')),
-                        new OA\Property(property: 'links', type: 'object'),
-                        new OA\Property(property: 'meta', type: 'object'),
+                        new OA\Property(property: 'meta', type: 'object', properties: [
+                            new OA\Property(property: 'current_page', type: 'integer', example: 1),
+                            new OA\Property(property: 'next_page', type: 'integer', nullable: true, example: 2),
+                            new OA\Property(property: 'prev_page', type: 'integer', nullable: true, example: null),
+                            new OA\Property(property: 'last_page', type: 'integer', example: 35),
+                            new OA\Property(property: 'per_page', type: 'integer', example: 50),
+                            new OA\Property(property: 'total', type: 'integer', example: 1750),
+                        ]),
                     ]),
                 ]),
             ),
@@ -73,11 +79,22 @@ final class TranslationController extends Controller
     {
         $paginator = $this->translations->paginate($request->validated(), $request->perPage());
 
-        // The resource collection is resolved to its array form so the
-        // pagination `links`/`meta` survive inside the envelope's `data`.
+        $current = $paginator->currentPage();
+        $last = $paginator->lastPage();
+
         return ApiResponse::successResponse(
             'Translations retrieved successfully.',
-            TranslationResource::collection($paginator)->response()->getData(true),
+            [
+                'data' => TranslationResource::collection($paginator)->response()->getData(true)['data'],
+                'meta' => [
+                    'current_page' => $current,
+                    'next_page' => $current < $last ? $current + 1 : null,
+                    'prev_page' => $current > 1 ? $current - 1 : null,
+                    'last_page' => $last,
+                    'per_page' => $paginator->perPage(),
+                    'total' => $paginator->total(),
+                ],
+            ],
         );
     }
 

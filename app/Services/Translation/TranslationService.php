@@ -7,7 +7,7 @@ namespace App\Services\Translation;
 use App\Filters\TranslationFilter;
 use App\Models\Tag;
 use App\Models\Translation;
-use Illuminate\Pagination\CursorPaginator;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 
@@ -31,16 +31,17 @@ final class TranslationService
     }
 
     /**
-     * List translations with optional filters, using cursor pagination.
+     * List translations with optional filters, using page-number pagination.
      *
-     * Cursor pagination (keyed on the indexed `id`) stays O(page size) at any
-     * depth — unlike OFFSET, which scans and discards all skipped rows.
-     * Relations are eager-loaded with constrained column lists to avoid N+1.
+     * paginate() issues a `SELECT COUNT(*)` alongside the page query so the
+     * response can include `last_page`. The `id`-ordered scan is index-served
+     * and the per_page cap bounds every page. Relations are eager-loaded with
+     * constrained column lists to avoid N+1.
      *
      * @param  array<string, mixed>  $filters
-     * @return CursorPaginator<int, Translation>
+     * @return LengthAwarePaginator<int, Translation>
      */
-    public function paginate(array $filters, int $perPage = 50): CursorPaginator
+    public function paginate(array $filters, int $perPage = 50): LengthAwarePaginator
     {
         $query = Translation::query()
             ->select(self::COLUMNS)
@@ -49,7 +50,7 @@ final class TranslationService
 
         $this->filter->apply($query, $filters);
 
-        return $query->cursorPaginate($perPage)->withQueryString();
+        return $query->paginate($perPage)->withQueryString();
     }
 
     /**

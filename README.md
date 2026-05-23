@@ -3,7 +3,7 @@
 A high-performance REST API for storing, searching and exporting localized
 translations, built with **Laravel 13**, **PHP 8.3** and **MySQL 8**.
 
-Designed for scale: it serves filtered, cursor-paginated reads and a
+Designed for scale: it serves filtered, page-paginated reads and a
 locale-wide JSON export from a **100k+ row** dataset while staying inside a
 **< 200 ms** budget for normal endpoints and **< 500 ms** for export.
 
@@ -35,7 +35,7 @@ locale-wide JSON export from a **100k+ row** dataset while staying inside a
 - **CRUD** plus combined **search** by `locale`, `key`, `content` and `tags`.
 - **JSON export**: a flat `{"key":"value"}` map per locale for frontend i18n.
 - **Token authentication** with Laravel Sanctum.
-- **Cursor pagination**, **FULLTEXT search**, **versioned export cache**.
+- **Page-number pagination**, **FULLTEXT search**, **versioned export cache**.
 - **OpenAPI 3** documentation with a testable Swagger UI.
 - **Uniform response envelope**: every success and error shares one
   `{status, code, message, data}` shape.
@@ -180,21 +180,22 @@ Xdebug disabled, MySQL 8; single-locale export ≈ 20k rows / 1.6 MB):
 
 | Endpoint                          | Time    | Budget   |
 | --------------------------------- | ------- | -------- |
-| `GET /translations` (50, cursor)  | ~110 ms | < 200 ms |
+| `GET /translations` (50, page=1)  | ~110 ms | < 200 ms |
 | `GET /translations` + filters     | ~130 ms | < 200 ms |
 | `GET /translations/export` (cold) | ~76 ms  | < 500 ms |
 | `GET /translations/export` (warm) | ~80 ms  | < 500 ms |
 
 Key optimizations:
 
-- **Cursor pagination**: O(page size) at any depth; `OFFSET` would scan and
-  discard every skipped row.
+- **Page-number pagination** with a strict `per_page` cap (1–200) bounds
+  every page; deep pages still go through the `id`-ordered index scan.
 - **FULLTEXT search**: index-backed `MATCH … AGAINST`, not `LIKE '%…%'`.
 - **Selective columns**: only the columns needed are selected; export reads
   just `key, content` through the base query builder (no Eloquent hydration).
 - **Eager loading**: `locale` and `tags` are loaded with constrained column
   lists, eliminating N+1 (a dedicated test asserts a constant query count).
-- **Streaming export build**: a lazy cursor keeps memory flat at any size.
+- **Single-pass export build**: `pluck('content', 'key')` materialises the
+  flat map in one query-builder pass — no per-row hydration overhead.
 - **Versioned export cache**: warm hits skip the query entirely.
 - **`Model::preventLazyLoading()`** in non-production turns any accidental
   N+1 into a hard failure during development and CI.
@@ -280,7 +281,7 @@ Base URL: `/api/v1`. All responses are JSON.
 | `POST`      | `/auth/login`             | Obtain a bearer token             | No   |
 | `POST`      | `/auth/logout`            | Revoke the current token          | ✔    |
 | `GET`       | `/auth/me`                | Current authenticated user        | ✔    |
-| `GET`       | `/translations`           | List & search (cursor-paginated)  | ✔    |
+| `GET`       | `/translations`           | List & search (page-paginated)    | ✔    |
 | `POST`      | `/translations`           | Create a translation              | ✔    |
 | `GET`       | `/translations/{id}`      | Show a translation                | ✔    |
 | `PUT/PATCH` | `/translations/{id}`      | Update (partial) a translation    | ✔    |
@@ -289,7 +290,7 @@ Base URL: `/api/v1`. All responses are JSON.
 
 Search filters on `GET /translations` (all optional, combined with AND):
 `?locale=en` · `?key=homepage` · `?content=welcome` ·
-`?tags[]=mobile&tags[]=web` · `?per_page=50` · `?cursor=…`
+`?tags[]=mobile&tags[]=web` · `?per_page=50` · `?page=2`
 
 ### Response format
 
@@ -300,7 +301,8 @@ Every JSON response uses one consistent envelope:
 ```
 
 - **Success**: the payload is in `data` (a single object, or
-  `{ data, links, meta }` for paginated lists).
+  `{ data, meta }` for paginated lists — `meta` carries
+  `current_page`, `next_page`, `prev_page`, `last_page`, `per_page`, `total`).
 - **Errors** (`401`, `403`, `404`, `422`, `429`, `500`) use the same shape with
   `status: "failed"`; `422` validation errors place the field-keyed messages
   under `data`.
@@ -452,7 +454,7 @@ Export caches are invalidated once at the end.
 | **Response envelope via a facade** | One `{status, code, message, data}` shape for the whole API, predictable for clients. `JsonResponseService` is container-bound and exposed as the `ApiResponse` facade, so it stays mockable and swappable rather than a static helper. |
 | **Native FULLTEXT over Scout** | Laravel Scout needs an external engine (Meilisearch/Algolia). MySQL FULLTEXT meets the performance budget with zero extra infrastructure. |
 | **Versioned cache keys over tag-based cache** | Works on every cache driver, not just Redis; the assessment shouldn't assume Redis. |
-| **Cursor over offset pagination** | Non-negotiable at 100k+ rows; offset degrades linearly with depth. |
+| **Page-number pagination with hard `per_page` cap** | Simple, predictable client contract (`?page=N` is what most consumers expect). The 1–200 cap keeps every page bounded, and tests guard the response budget at 100k+ rows. |
 | **`locale` code in the API, `locale_id` internally** | The public API stays human-friendly (`?locale=en`); the integer FK is resolved once in the Form Request. |
 | **Tags auto-created on write** | A friendlier API for a small, controlled tag vocabulary; `firstOrCreate` keeps it idempotent. |
 | **Search merged into `GET /translations`** | One filterable, paginated collection endpoint instead of a near-duplicate `/search`; less surface, no duplicated logic. |

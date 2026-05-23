@@ -70,13 +70,34 @@ it('combines multiple filters with AND', function (): void {
         ->assertJsonCount(1, 'data.data');
 });
 
-it('cursor-paginates the result set', function (): void {
+it('paginates the result set by page number', function (): void {
     Translation::factory()->for($this->en)->count(5)->create();
 
     $response = $this->getJson('/api/v1/translations?per_page=2')->assertOk();
 
     expect($response->json('data.data'))->toHaveCount(2)
-        ->and($response->json('data.meta.next_cursor'))->not->toBeNull();
+        ->and($response->json('data.meta.current_page'))->toBe(1)
+        ->and($response->json('data.meta.next_page'))->toBe(2)
+        ->and($response->json('data.meta.prev_page'))->toBeNull()
+        ->and($response->json('data.meta.last_page'))->toBe(3)
+        ->and($response->json('data.meta.per_page'))->toBe(2)
+        ->and($response->json('data.meta.total'))->toBe(5);
+
+    $page2 = $this->getJson('/api/v1/translations?per_page=2&page=2')->assertOk();
+
+    expect($page2->json('data.data'))->toHaveCount(2)
+        ->and($page2->json('data.meta.current_page'))->toBe(2)
+        ->and($page2->json('data.meta.prev_page'))->toBe(1)
+        ->and($page2->json('data.meta.next_page'))->toBe(3)
+        ->and($page2->json('data.meta.last_page'))->toBe(3);
+
+    $lastPage = $this->getJson('/api/v1/translations?per_page=2&page=3')->assertOk();
+
+    expect($lastPage->json('data.data'))->toHaveCount(1)
+        ->and($lastPage->json('data.meta.current_page'))->toBe(3)
+        ->and($lastPage->json('data.meta.next_page'))->toBeNull()
+        ->and($lastPage->json('data.meta.prev_page'))->toBe(2)
+        ->and($lastPage->json('data.meta.last_page'))->toBe(3);
 });
 
 it('rejects an out-of-range page size', function (): void {

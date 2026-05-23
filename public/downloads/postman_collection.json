@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "b1f5e9a0-7c3d-4e8a-9f21-tms0000000001",
     "name": "Translation Management Service API",
-    "description": "REST API for storing, searching and exporting localized translations.\n\n## Getting started\n1. Set the `base_url` collection variable if your server is not on http://localhost:8005.\n2. Run **Authentication > Login** — the returned token is saved automatically to the `token` variable.\n3. Every other request inherits bearer auth from the collection, so they just work.\n4. Run **Translations > Create Translation** — the new id is saved to `translation_id`, so Show/Update/Delete work without editing anything.\n\nDefault credentials: admin@example.com / password\n\n## Response shape\nEvery JSON response uses one envelope:\n\n    { \"status\": \"success|failed\", \"code\": <http>, \"message\": \"...\", \"data\": <payload|null> }\n\n- List endpoints place the paginated payload at `data.data`, with `data.links` and `data.meta`.\n- Validation errors (422) place the field errors at `data`.\n- The only exception is **Export**, which returns a raw flat `{\"key\":\"value\"}` map (no envelope) for direct frontend i18n consumption.",
+    "description": "REST API for storing, searching and exporting localized translations.\n\n## Getting started\n1. Set the `base_url` collection variable if your server is not on http://localhost:8005.\n2. Run **Authentication > Login** — the returned token is saved automatically to the `token` variable.\n3. Every other request inherits bearer auth from the collection, so they just work.\n4. Run **Translations > Create Translation** — the new id is saved to `translation_id`, so Show/Update/Delete work without editing anything.\n\nDefault credentials: admin@example.com / password\n\n## Response shape\nEvery JSON response uses one envelope:\n\n    { \"status\": \"success|failed\", \"code\": <http>, \"message\": \"...\", \"data\": <payload|null> }\n\n- List endpoints place the paginated payload at `data.data`, with `data.meta` (current_page, next_page, prev_page, last_page, per_page, total).\n- Validation errors (422) place the field errors at `data`.\n- The only exception is **Export**, which returns a raw flat `{\"key\":\"value\"}` map (no envelope) for direct frontend i18n consumption.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "auth": {
@@ -108,10 +108,10 @@
                 { "key": "content", "value": "welcome", "disabled": true },
                 { "key": "tags[]", "value": "web", "disabled": true },
                 { "key": "tags[]", "value": "mobile", "disabled": true },
-                { "key": "cursor", "value": "", "disabled": true }
+                { "key": "page", "value": "1", "disabled": true }
               ]
             },
-            "description": "Cursor-paginated list. Enable any of the disabled query params to filter by locale, key prefix, content (full-text), or tags. Filters combine with AND.\n\nResponse: `{status, code, message, data: {data: [...translations], links, meta}}` — the items are at `data.data`, the pagination cursor at `data.meta.next_cursor`."
+            "description": "Page-number paginated list. Enable any of the disabled query params to filter by locale, key prefix, content (full-text), or tags. Filters combine with AND.\n\nResponse: `{status, code, message, data: {data: [...translations], meta}}` — the items are at `data.data`, and `data.meta` carries `current_page`, `next_page`, `prev_page`, `last_page`, `per_page`, `total`."
           }
         },
         {

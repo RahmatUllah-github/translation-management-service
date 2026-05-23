@@ -30,7 +30,7 @@ final class IndexTranslationRequest extends FormRequest
             'tags' => ['sometimes', 'array'],
             'tags.*' => ['string', 'max:64'],
             'per_page' => ['sometimes', 'integer', 'min:1', 'max:200'],
-            'cursor' => ['sometimes', 'string'],
+            'page' => ['sometimes', 'integer', 'min:1'],
         ];
     }
 
