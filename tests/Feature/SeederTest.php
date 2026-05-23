@@ -15,7 +15,7 @@ uses(RefreshDatabase::class);
 it('seeds the baseline locales', function (): void {
     $this->seed(LocaleSeeder::class);
 
-    expect(Locale::query()->count())->toBe(5)
+    expect(Locale::query()->count())->toBe(7)
         ->and(Locale::query()->where('code', 'en')->exists())->toBeTrue();
 });
 
@@ -29,7 +29,7 @@ it('seeders are idempotent when run twice', function (): void {
     $this->seed(LocaleSeeder::class);
     $this->seed(LocaleSeeder::class);
 
-    expect(Locale::query()->count())->toBe(5);
+    expect(Locale::query()->count())->toBe(7);
 });
 
 it('generates the requested volume via the scalability command', function (): void {

@@ -16,7 +16,9 @@ final class LocaleSeeder extends Seeder
             ['code' => 'fr', 'name' => 'French'],
             ['code' => 'es', 'name' => 'Spanish'],
             ['code' => 'de', 'name' => 'German'],
-            ['code' => 'pt-BR', 'name' => 'Portuguese (Brazil)'],
+            ['code' => 'ar', 'name' => 'Arabic'],
+            ['code' => 'ur', 'name' => 'Urdu'],
+            ['code' => 'ps', 'name' => 'Pashto'],
         ];
 
         foreach ($locales as $locale) {

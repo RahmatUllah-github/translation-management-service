@@ -16,7 +16,7 @@ return new class () extends Migration {
     {
         Schema::create('locales', function (Blueprint $table): void {
             $table->id();
-            $table->string('code', 10)->unique();   // e.g. en, fr, es, pt-BR
+            $table->string('code', 10)->unique();   // e.g. en, fr, etc
             $table->string('name', 64);             // e.g. "English"
             $table->boolean('is_active')->default(true)->index();
             $table->timestamps();
